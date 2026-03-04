@@ -1,0 +1,1029 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="theme-color" content="#06060f" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="StudyVault" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <title>StudyVault</title>
+  <link rel="manifest" href="manifest.json" />
+  <link rel="apple-touch-icon" href="icons/icon-192.png" />
+  <link rel="icon" href="icons/icon-192.png" />
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@500;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; overflow: hidden; }
+    body {
+      font-family: 'Syne', sans-serif;
+      background: #06060f;
+      color: #fff;
+      -webkit-tap-highlight-color: transparent;
+      -webkit-font-smoothing: antialiased;
+    }
+    input, button, textarea, select { font-family: 'Syne', sans-serif; }
+    #app { height: 100vh; height: 100dvh; overflow-y: auto; }
+
+    @keyframes spin    { to { transform: rotate(360deg); } }
+    @keyframes fadeUp  { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:none; } }
+    @keyframes popIn   { from { opacity:0; transform:scale(0.94); } to { opacity:1; transform:scale(1); } }
+    @keyframes slideIn { from { opacity:0; transform:translateX(18px); } to { opacity:1; transform:none; } }
+
+    .fade  { animation: fadeUp 0.3s ease; }
+    .pop   { animation: popIn 0.25s ease; }
+    .slide { animation: slideIn 0.3s ease; }
+
+    ::-webkit-scrollbar { width: 4px; }
+    ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 2px; }
+
+    /* inputs */
+    .inp {
+      width: 100%; padding: 13px 15px;
+      background: rgba(255,255,255,0.07);
+      border: 1px solid rgba(255,255,255,0.13);
+      border-radius: 12px; color: #fff; font-size: 15px; outline: none;
+      -webkit-appearance: none;
+    }
+    .inp:focus { border-color: rgba(102,126,234,0.6); }
+    .inp::placeholder { color: rgba(255,255,255,0.3); }
+    textarea.inp { resize: vertical; line-height: 1.6; min-height: 120px; }
+
+    /* buttons */
+    .btn-primary {
+      width: 100%; padding: 14px;
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      border: none; border-radius: 12px; color: #fff;
+      font-size: 15px; font-weight: 800; cursor: pointer;
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+      -webkit-appearance: none;
+    }
+    .btn-primary:active { opacity: 0.8; }
+
+    /* spinner */
+    .spin {
+      display: inline-block; border-radius: 50%;
+      border: 2px solid rgba(255,255,255,0.3);
+      border-top-color: #fff;
+      animation: spin 0.7s linear infinite;
+      flex-shrink: 0;
+    }
+
+    /* toast */
+    #toast {
+      position: fixed; top: calc(env(safe-area-inset-top) + 14px); left: 50%;
+      transform: translateX(-50%);
+      z-index: 9999; border-radius: 30px;
+      padding: 11px 22px; font-size: 14px; font-weight: 700;
+      white-space: nowrap; max-width: 90vw;
+      box-shadow: 0 6px 28px rgba(0,0,0,0.5);
+      animation: fadeUp 0.3s ease;
+      display: none;
+    }
+
+    /* modal overlay */
+    .modal-overlay {
+      position: fixed; inset: 0; z-index: 500;
+      background: rgba(0,0,0,0.8); backdrop-filter: blur(8px);
+      display: flex; align-items: flex-end;
+      padding-bottom: env(safe-area-inset-bottom);
+    }
+    .modal-sheet {
+      width: 100%;
+      background: linear-gradient(170deg, #131628, #0a0a1a);
+      border-radius: 24px 24px 0 0;
+      border-top: 1px solid rgba(255,255,255,0.12);
+      padding: 20px 20px calc(20px + env(safe-area-inset-bottom));
+      animation: slideIn 0.3s ease;
+      max-height: 90vh; overflow-y: auto;
+    }
+
+    /* nav bar */
+    #nav {
+      position: fixed; bottom: 0; left: 0; right: 0;
+      background: rgba(10,10,20,0.96); backdrop-filter: blur(20px);
+      border-top: 1px solid rgba(255,255,255,0.08);
+      display: flex; padding: 8px 0;
+      padding-bottom: calc(8px + env(safe-area-inset-bottom));
+      z-index: 200;
+    }
+    .nav-item {
+      flex: 1; display: flex; flex-direction: column;
+      align-items: center; gap: 3px;
+      background: none; border: none; cursor: pointer; padding: 4px 0;
+      color: rgba(255,255,255,0.35); font-size: 10px; font-weight: 700;
+      letter-spacing: 0.3px; transition: color 0.2s;
+    }
+    .nav-item.active { color: #667eea; }
+    .nav-item .icon { font-size: 22px; }
+
+    /* content area */
+    #content {
+      padding: 0 0 80px 0;
+      padding-bottom: calc(80px + env(safe-area-inset-bottom));
+      min-height: 100vh;
+    }
+
+    /* photo grid */
+    .photo-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 3px;
+    }
+    .photo-item {
+      position: relative;
+      aspect-ratio: 1;
+      overflow: hidden;
+      background: rgba(255,255,255,0.05);
+      cursor: pointer;
+    }
+    .photo-item img { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+    /* subject card */
+    .subject-card {
+      border-radius: 18px; padding: 18px 16px;
+      cursor: pointer; transition: all 0.2s ease;
+      border: 1px solid rgba(255,255,255,0.08);
+      background: rgba(255,255,255,0.04);
+      active-scale: 0.97;
+    }
+    .subject-card:active { transform: scale(0.97); }
+
+    /* safe area top */
+    .safe-top { padding-top: env(safe-area-inset-top); }
+
+    /* install banner */
+    #install-banner {
+      display: none;
+      position: fixed; bottom: calc(80px + env(safe-area-inset-bottom) + 10px);
+      left: 12px; right: 12px; z-index: 300;
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      border-radius: 16px; padding: 14px 16px;
+      box-shadow: 0 8px 32px rgba(102,126,234,0.4);
+      animation: fadeUp 0.4s ease;
+    }
+
+    /* lightbox */
+    #lightbox {
+      display: none;
+      position: fixed; inset: 0; z-index: 9000;
+      background: rgba(0,0,0,0.97);
+      align-items: center; justify-content: center;
+      flex-direction: column;
+    }
+    #lightbox.open { display: flex; }
+    #lightbox img { max-width: 100vw; max-height: 80vh; object-fit: contain; }
+  </style>
+</head>
+<body>
+<div id="app">
+  <!-- screens rendered by JS -->
+  <div id="content"></div>
+  <nav id="nav" style="display:none"></nav>
+  <div id="toast"></div>
+  <div id="lightbox">
+    <img id="lightbox-img" src="" alt="" />
+    <div style="display:flex;gap:16px;margin-top:20px;">
+      <button onclick="closeLightbox()" style="background:rgba(255,255,255,0.15);border:none;color:#fff;padding:10px 24px;border-radius:30px;font-size:15px;cursor:pointer;">✕ Close</button>
+      <a id="lightbox-dl" href="" download="" style="background:rgba(79,142,247,0.9);color:#fff;padding:10px 24px;border-radius:30px;font-size:15px;text-decoration:none;font-weight:700;">⬇ Save</a>
+    </div>
+  </div>
+  <div id="install-banner">
+    <div style="display:flex;justify-content:space-between;align-items:center;">
+      <div>
+        <div style="font-weight:800;font-size:15px;">📲 Install StudyVault</div>
+        <div style="font-size:12px;opacity:0.85;margin-top:2px;">Add to Home Screen for the best experience</div>
+      </div>
+      <div style="display:flex;gap:8px;">
+        <button onclick="installApp()" style="background:rgba(255,255,255,0.25);border:none;color:#fff;padding:8px 16px;border-radius:20px;font-size:13px;font-weight:800;cursor:pointer;">Install</button>
+        <button onclick="document.getElementById('install-banner').style.display='none'" style="background:none;border:none;color:rgba(255,255,255,0.6);font-size:20px;cursor:pointer;">✕</button>
+      </div>
+    </div>
+    <div id="ios-hint" style="display:none;margin-top:10px;background:rgba(0,0,0,0.3);border-radius:10px;padding:10px;font-size:12px;line-height:1.5;">
+      On iPhone: tap <strong>Share</strong> (□↑) at the bottom → <strong>"Add to Home Screen"</strong>
+    </div>
+  </div>
+</div>
+
+<!-- hidden file inputs -->
+<input type="file" id="input-pdf"     accept=".pdf,.doc,.docx,.ppt,.pptx,.txt"      multiple style="display:none" />
+<input type="file" id="input-mid"     accept=".pdf,.doc,.docx,.ppt,.pptx,.png,.jpg" multiple style="display:none" />
+<input type="file" id="input-gallery" accept="image/*"                               multiple style="display:none" />
+<input type="file" id="input-camera"  accept="image/*" capture="environment"                  style="display:none" />
+
+<script>
+/* ══════════════════════════════════════════════════
+   CONFIG
+══════════════════════════════════════════════════ */
+const APP_PASSWORD = "study123"; // 🔒 Change this!
+
+const DEFAULT_SUBJECTS = [
+  { id:"math",    name:"Mathematics",      icon:"📐", color:"#4f8ef7" },
+  { id:"physics", name:"Physics",          icon:"⚛️",  color:"#f76f4f" },
+  { id:"chem",    name:"Chemistry",        icon:"🧪", color:"#4fdc8a" },
+  { id:"cs",      name:"Computer Science", icon:"💻", color:"#c47af7" },
+  { id:"eng",     name:"English",          icon:"📖", color:"#f7c94f" },
+];
+
+/* ══════════════════════════════════════════════════
+   STATE
+══════════════════════════════════════════════════ */
+let STATE = {
+  auth: null,           // { token, owner, repo, username }
+  subjects: DEFAULT_SUBJECTS,
+  subData: {},          // { id: { notes, mid, photos, texts } }
+  view: "login",        // login | dashboard | subject | allMid
+  activeSub: null,
+  tab: "notes",         // notes | mid | photos | texts
+  loading: false,
+  uploading: false,
+};
+
+/* ══════════════════════════════════════════════════
+   GITHUB API
+══════════════════════════════════════════════════ */
+async function ghReq(method, path, body) {
+  const { token } = STATE.auth;
+  const res = await fetch(`https://api.github.com${path}`, {
+    method,
+    headers: {
+      Authorization: `token ${token}`,
+      Accept: "application/vnd.github+json",
+      "Content-Type": "application/json",
+    },
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  if (!res.ok) {
+    const e = await res.json().catch(() => ({}));
+    throw new Error(e.message || `GitHub error ${res.status}`);
+  }
+  return res.json();
+}
+
+async function ghReqRaw(token, method, path, body) {
+  const res = await fetch(`https://api.github.com${path}`, {
+    method,
+    headers: { Authorization:`token ${token}`, Accept:"application/vnd.github+json", "Content-Type":"application/json" },
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  if (!res.ok) { const e=await res.json().catch(()=>({})); throw new Error(e.message||`GH ${res.status}`); }
+  return res.json();
+}
+
+async function ghGetFile(path) {
+  try { return await ghReq("GET", `/repos/${STATE.auth.owner}/${STATE.auth.repo}/contents/${path}`); }
+  catch { return null; }
+}
+
+async function ghPutFile(path, content, sha, msg) {
+  return ghReq("PUT", `/repos/${STATE.auth.owner}/${STATE.auth.repo}/contents/${path}`, {
+    message: msg,
+    content: btoa(unescape(encodeURIComponent(content))),
+    ...(sha ? { sha } : {}),
+  });
+}
+
+async function ghListDir(path) {
+  try { return await ghReq("GET", `/repos/${STATE.auth.owner}/${STATE.auth.repo}/contents/${path}`); }
+  catch { return []; }
+}
+
+async function ghDeleteFile(path, sha, msg) {
+  return ghReq("DELETE", `/repos/${STATE.auth.owner}/${STATE.auth.repo}/contents/${path}`, { message:msg, sha });
+}
+
+async function ghUploadBinary(path, file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = async () => {
+      try {
+        const b64 = reader.result.split(",")[1];
+        const existing = await ghGetFile(path);
+        await ghReq("PUT", `/repos/${STATE.auth.owner}/${STATE.auth.repo}/contents/${path}`, {
+          message: `Upload ${file.name}`,
+          content: b64,
+          ...(existing?.sha ? { sha: existing.sha } : {}),
+        });
+        resolve();
+      } catch(e) { reject(e); }
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+async function ensureRepo(token, owner, repo) {
+  try {
+    await ghReqRaw(token, "GET", `/repos/${owner}/${repo}`);
+  } catch {
+    await ghReqRaw(token, "POST", "/user/repos", {
+      name: repo, private: true, auto_init: true,
+      description: "StudyVault — Personal Study Storage",
+    });
+    await new Promise(r => setTimeout(r, 2000));
+  }
+}
+
+/* ══════════════════════════════════════════════════
+   HELPERS
+══════════════════════════════════════════════════ */
+const slugify = s => s.toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"");
+const fmtSize = b => b>1048576?(b/1048576).toFixed(1)+" MB":(b/1024).toFixed(0)+" KB";
+const isImg   = n => /\.(png|jpe?g|gif|webp|bmp|heic|avif)$/i.test(n);
+const esc     = s => s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+
+let toastTimer = null;
+function showToast(msg, type="success") {
+  const el = document.getElementById("toast");
+  el.textContent = msg;
+  el.style.background = type==="error"?"rgba(180,30,30,0.97)":type==="warn"?"rgba(180,120,10,0.97)":"rgba(16,160,80,0.97)";
+  el.style.display = "block";
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { el.style.display="none"; }, 3200);
+}
+
+function render() {
+  const c = document.getElementById("content");
+  const nav = document.getElementById("nav");
+  if (STATE.view === "login") { nav.style.display="none"; c.innerHTML = renderLogin(); }
+  else if (STATE.view === "dashboard") { nav.style.display="flex"; renderNav("dashboard"); c.innerHTML = renderDashboard(); }
+  else if (STATE.view === "subject")   { nav.style.display="flex"; renderNav("subject");   c.innerHTML = renderSubject(); }
+  else if (STATE.view === "allMid")    { nav.style.display="flex"; renderNav("allMid");    c.innerHTML = renderAllMid(); }
+  attachEvents();
+}
+
+/* ══════════════════════════════════════════════════
+   NAV
+══════════════════════════════════════════════════ */
+function renderNav(active) {
+  const nav = document.getElementById("nav");
+  nav.innerHTML = `
+    <button class="nav-item ${active==='dashboard'?'active':''}" onclick="goTo('dashboard')">
+      <span class="icon">🏠</span><span>Home</span>
+    </button>
+    <button class="nav-item ${active==='subject'&&STATE.tab==='notes'?'active':''}" onclick="if(STATE.activeSub){STATE.tab='notes';render();}">
+      <span class="icon">📄</span><span>Notes</span>
+    </button>
+    <button class="nav-item ${active==='subject'&&STATE.tab==='photos'?'active':''}" onclick="if(STATE.activeSub){STATE.tab='photos';render();}">
+      <span class="icon">📸</span><span>Photos</span>
+    </button>
+    <button class="nav-item ${active==='allMid'?'active':''}" onclick="openAllMid()">
+      <span class="icon">📝</span><span>Mid Papers</span>
+    </button>
+    <button class="nav-item" onclick="doLogout()">
+      <span class="icon">🚪</span><span>Logout</span>
+    </button>
+  `;
+}
+
+/* ══════════════════════════════════════════════════
+   LOGIN SCREEN
+══════════════════════════════════════════════════ */
+let loginStep = 1;
+function renderLogin() {
+  return `
+  <div style="min-height:100vh;display:flex;align-items:center;justify-content:center;
+    background:radial-gradient(ellipse at 25% 40%,#0d1b2e 0%,#06060f 55%,#180e2a 100%);padding:20px;">
+    <div style="position:fixed;top:-20%;left:-8%;width:500px;height:500px;border-radius:50%;
+      background:radial-gradient(#4f8ef712,transparent 70%);pointer-events:none;"></div>
+    <div style="position:fixed;bottom:-12%;right:-5%;width:420px;height:420px;border-radius:50%;
+      background:radial-gradient(#c47af712,transparent 70%);pointer-events:none;"></div>
+
+    <div class="pop" style="background:rgba(255,255,255,0.04);backdrop-filter:blur(24px);
+      border:1px solid rgba(255,255,255,0.11);border-radius:26px;padding:44px 28px;
+      width:100%;max-width:420px;box-shadow:0 28px 80px rgba(0,0,0,0.6);">
+
+      <div style="text-align:center;margin-bottom:26px;">
+        <div style="font-size:54px;">🎓</div>
+        <h1 style="font-size:26px;font-weight:800;letter-spacing:-1px;margin-top:8px;">StudyVault</h1>
+        <p style="color:rgba(255,255,255,0.35);font-size:11px;margin-top:5px;font-family:'DM Mono',monospace;letter-spacing:1.5px;">
+          STEP ${loginStep} / 2 — ${loginStep===1?"APP ACCESS":"GITHUB STORAGE"}
+        </p>
+      </div>
+
+      <div style="display:flex;gap:8px;margin-bottom:24px;">
+        <div style="flex:1;height:3px;border-radius:3px;background:linear-gradient(90deg,#667eea,#764ba2);"></div>
+        <div style="flex:1;height:3px;border-radius:3px;background:${loginStep>=2?"linear-gradient(90deg,#667eea,#764ba2)":"rgba(255,255,255,0.1)"};"></div>
+      </div>
+
+      <div id="login-err" style="display:none;background:rgba(255,60,60,0.14);border:1px solid rgba(255,60,60,0.28);
+        border-radius:11px;padding:10px 14px;color:#ff8888;font-size:13px;margin-bottom:16px;text-align:center;"></div>
+
+      ${loginStep===1 ? `
+        <label style="color:rgba(255,255,255,0.4);font-size:10px;letter-spacing:2.5px;display:block;margin-bottom:7px;font-weight:700;">APP PASSWORD</label>
+        <div style="position:relative;margin-bottom:22px;">
+          <input class="inp" id="inp-pass" type="password" placeholder="Enter vault password" style="padding-right:46px;"
+            onkeydown="if(event.key==='Enter')doStep1()" />
+          <button onclick="togglePass('inp-pass',this)" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);
+            background:none;border:none;cursor:pointer;font-size:20px;color:rgba(255,255,255,0.4);">👁️</button>
+        </div>
+        <button class="btn-primary" onclick="doStep1()">Unlock →</button>
+      ` : `
+        <div style="background:rgba(255,200,80,0.09);border:1px solid rgba(255,200,80,0.2);border-radius:11px;padding:12px 14px;margin-bottom:18px;">
+          <p style="color:#ffc850;font-size:12px;line-height:1.65;">
+            🔑 Go to: <strong>GitHub → Settings → Developer settings → Personal access tokens (classic)</strong><br/>
+            Generate a token with <code style="background:rgba(0,0,0,0.3);padding:1px 5px;border-radius:3px;">repo</code> scope.
+          </p>
+        </div>
+        <label style="color:rgba(255,255,255,0.4);font-size:10px;letter-spacing:2.5px;display:block;margin-bottom:7px;font-weight:700;">GITHUB TOKEN (ghp_...)</label>
+        <div style="position:relative;margin-bottom:14px;">
+          <input class="inp" id="inp-token" type="password" placeholder="ghp_xxxxxxxxxxxx"
+            style="padding-right:46px;font-family:'DM Mono',monospace;" />
+          <button onclick="togglePass('inp-token',this)" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);
+            background:none;border:none;cursor:pointer;font-size:20px;color:rgba(255,255,255,0.4);">👁️</button>
+        </div>
+        <label style="color:rgba(255,255,255,0.4);font-size:10px;letter-spacing:2.5px;display:block;margin-bottom:7px;font-weight:700;">REPO NAME</label>
+        <input class="inp" id="inp-repo" value="study-vault" placeholder="study-vault"
+          style="margin-bottom:22px;" onkeydown="if(event.key==='Enter')doStep2()" />
+        <button class="btn-primary" id="step2-btn" onclick="doStep2()">🐙 Connect GitHub →</button>
+      `}
+    </div>
+  </div>`;
+}
+
+function togglePass(inputId, btn) {
+  const inp = document.getElementById(inputId);
+  if (inp.type === "password") { inp.type="text"; btn.textContent="🙈"; }
+  else { inp.type="password"; btn.textContent="👁️"; }
+}
+
+function showLoginErr(msg) {
+  const el = document.getElementById("login-err");
+  if (el) { el.textContent=msg; el.style.display="block"; }
+}
+
+function doStep1() {
+  const pass = document.getElementById("inp-pass")?.value || "";
+  if (pass === APP_PASSWORD) { loginStep=2; render(); }
+  else showLoginErr("❌ Wrong password. Default is: study123");
+}
+
+async function doStep2() {
+  const token = (document.getElementById("inp-token")?.value || "").trim();
+  const repo  = (document.getElementById("inp-repo")?.value  || "study-vault").trim();
+  if (!token) { showLoginErr("Please enter your GitHub token."); return; }
+
+  const btn = document.getElementById("step2-btn");
+  if (btn) { btn.innerHTML='<span class="spin" style="width:18px;height:18px;"></span> Connecting…'; btn.disabled=true; }
+
+  try {
+    const res  = await fetch("https://api.github.com/user", { headers:{ Authorization:`token ${token}`, Accept:"application/vnd.github+json" } });
+    if (!res.ok) throw new Error("Invalid token");
+    const user = await res.json();
+    // temporarily set auth for ensureRepo
+    STATE.auth = { token, owner: user.login, repo, username: user.login };
+    await ensureRepo(token, user.login, repo);
+    await loadSubjects();
+    STATE.view = "dashboard";
+    loginStep = 1;
+    render();
+    saveAuthLocal();
+  } catch(e) {
+    STATE.auth = null;
+    showLoginErr("GitHub error: " + e.message);
+    if (btn) { btn.innerHTML="🐙 Connect GitHub →"; btn.disabled=false; }
+  }
+}
+
+/* ══════════════════════════════════════════════════
+   PERSIST AUTH (so user stays logged in)
+══════════════════════════════════════════════════ */
+function saveAuthLocal() {
+  try { localStorage.setItem("sv_auth", JSON.stringify(STATE.auth)); } catch {}
+}
+function loadAuthLocal() {
+  try {
+    const a = localStorage.getItem("sv_auth");
+    if (a) { STATE.auth = JSON.parse(a); return true; }
+  } catch {}
+  return false;
+}
+function clearAuthLocal() {
+  try { localStorage.removeItem("sv_auth"); } catch {}
+}
+
+/* ══════════════════════════════════════════════════
+   DASHBOARD
+══════════════════════════════════════════════════ */
+function renderDashboard() {
+  const totalNotes  = Object.values(STATE.subData).reduce((a,s)=>a+(s?.notes?.length||0),0);
+  const totalMid    = Object.values(STATE.subData).reduce((a,s)=>a+(s?.mid?.length||0),0);
+  const totalPhotos = Object.values(STATE.subData).reduce((a,s)=>a+(s?.photos?.length||0),0);
+
+  const statsHTML = [
+    { label:"Subjects",   val:STATE.subjects.length, icon:"📚", color:"#667eea" },
+    { label:"Notes",      val:totalNotes,             icon:"📄", color:"#4fdc8a" },
+    { label:"Mid Papers", val:totalMid,               icon:"📝", color:"#ffc850" },
+    { label:"Photos",     val:totalPhotos,            icon:"📸", color:"#f76f4f" },
+  ].map(s=>`
+    <div style="background:linear-gradient(135deg,${s.color}18,${s.color}08);
+      border:1px solid ${s.color}30;border-radius:16px;padding:16px 12px;text-align:center;">
+      <div style="font-size:24px;">${s.icon}</div>
+      <div style="font-size:22px;font-weight:800;color:${s.color};line-height:1.1;">${s.val}</div>
+      <div style="color:rgba(255,255,255,0.4);font-size:11px;margin-top:3px;">${s.label}</div>
+    </div>`).join("");
+
+  const subjectsHTML = STATE.subjects.map((s,i) => {
+    const d = STATE.subData[s.id] || {};
+    return `
+    <div class="subject-card" onclick="openSubject(${i})"
+      style="border-color:rgba(255,255,255,0.08);">
+      <div style="font-size:34px;margin-bottom:8px;">${s.icon}</div>
+      <div style="font-weight:800;font-size:15px;margin-bottom:12px;color:#fff;">${esc(s.name)}</div>
+      <div style="display:flex;gap:5px;flex-wrap:wrap;">
+        <span style="background:${s.color}22;color:${s.color};border-radius:20px;padding:3px 9px;font-size:10px;font-weight:700;">📄 ${d.notes?.length??'—'} Notes</span>
+        <span style="background:rgba(255,200,80,.15);color:#ffc850;border-radius:20px;padding:3px 9px;font-size:10px;font-weight:700;">📝 ${d.mid?.length??'—'} Mid</span>
+        <span style="background:rgba(79,220,138,.14);color:#4fdc8a;border-radius:20px;padding:3px 9px;font-size:10px;font-weight:700;">📸 ${d.photos?.length??'—'} Photos</span>
+        <span style="background:rgba(196,122,247,.14);color:#c47af7;border-radius:20px;padding:3px 9px;font-size:10px;font-weight:700;">✏️ ${d.texts?.length??'—'} Texts</span>
+      </div>
+    </div>`;
+  }).join("");
+
+  return `
+  <div class="fade safe-top" style="padding:20px;min-height:100vh;
+    background:radial-gradient(ellipse at 30% 10%,#0d1b2e 0%,#060610 55%,#160d26 100%);">
+
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:22px;">
+      <div>
+        <h1 style="font-size:22px;font-weight:800;letter-spacing:-0.5px;">Hi, ${esc(STATE.auth.username)} 👋</h1>
+        <p style="color:rgba(255,255,255,0.38);font-size:12px;margin-top:3px;">
+          <a href="https://github.com/${esc(STATE.auth.owner)}/${esc(STATE.auth.repo)}" target="_blank"
+            style="color:#4f8ef7;text-decoration:none;">🐙 ${esc(STATE.auth.owner)}/${esc(STATE.auth.repo)}</a>
+        </p>
+      </div>
+      <button onclick="showAddSubject()" style="background:linear-gradient(135deg,#667eea,#764ba2);
+        border:none;color:#fff;padding:9px 16px;border-radius:12px;font-size:13px;font-weight:800;cursor:pointer;">
+        + Subject
+      </button>
+    </div>
+
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:24px;">
+      ${statsHTML}
+    </div>
+
+    <h2 style="font-size:16px;font-weight:800;margin-bottom:14px;">My Subjects</h2>
+    <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:12px;">
+      ${subjectsHTML}
+    </div>
+  </div>`;
+}
+
+/* ══════════════════════════════════════════════════
+   SUBJECT VIEW
+══════════════════════════════════════════════════ */
+function renderSubject() {
+  const sub = STATE.activeSub;
+  if (!sub) return renderDashboard();
+  const d   = STATE.subData[sub.id] || { notes:[], mid:[], photos:[], texts:[] };
+
+  const TABS = [
+    { key:"notes",  label:"📄 Notes",  color:"#4f8ef7" },
+    { key:"mid",    label:"📝 Mid",    color:"#ffc850" },
+    { key:"photos", label:"📸 Photos", color:"#4fdc8a" },
+    { key:"texts",  label:"✏️ Texts",  color:"#c47af7" },
+  ];
+
+  const tabBar = TABS.map(t=>`
+    <button onclick="switchTab('${t.key}')" style="flex:1;padding:9px 4px;
+      background:${STATE.tab===t.key?`${t.color}22`:"none"};
+      border:1px solid ${STATE.tab===t.key?`${t.color}44`:"transparent"};
+      color:${STATE.tab===t.key?t.color:"rgba(255,255,255,0.38)"};
+      border-radius:9px;cursor:pointer;font-size:11px;font-weight:700;
+      font-family:'Syne',sans-serif;transition:all 0.2s;white-space:nowrap;">
+      ${t.label}
+    </button>`).join("");
+
+  let uploadBar = "";
+  if (STATE.tab==="notes")  uploadBar = `<button class="upload-btn" onclick="document.getElementById('input-pdf').click()" style="background:linear-gradient(135deg,#4f8ef7,#2060c8);">⬆ Upload PDFs / Docs</button>`;
+  if (STATE.tab==="mid")    uploadBar = `<button class="upload-btn" onclick="document.getElementById('input-mid').click()" style="background:linear-gradient(135deg,#ffc850,#e09000);color:#000;">⬆ Upload Mid Paper</button>`;
+  if (STATE.tab==="photos") uploadBar = `
+    <button class="upload-btn" onclick="document.getElementById('input-gallery').click()" style="background:linear-gradient(135deg,#4fdc8a,#2db870);">🖼 Gallery</button>
+    <button class="upload-btn" onclick="document.getElementById('input-camera').click()"  style="background:linear-gradient(135deg,#f76f4f,#c04020);">📷 Camera</button>`;
+
+  let tabContent = "";
+  if (STATE.loading) {
+    tabContent = `<div style="text-align:center;padding:50px 0;color:rgba(255,255,255,0.35);">
+      <div class="spin" style="width:32px;height:32px;margin:0 auto 14px;"></div>
+      <div style="font-size:14px;">Loading from GitHub…</div></div>`;
+  } else if (STATE.tab==="notes") {
+    tabContent = renderFileList(d.notes || [], "📄", "No notes yet — upload PDFs or documents");
+  } else if (STATE.tab==="mid") {
+    tabContent = renderFileList(d.mid || [], "📝", "No mid papers yet — upload exam papers");
+  } else if (STATE.tab==="photos") {
+    tabContent = renderPhotoGrid(d.photos || []);
+  } else if (STATE.tab==="texts") {
+    tabContent = renderTextNotes(d.texts || []);
+  }
+
+  return `
+  <div class="slide" style="min-height:100vh;
+    background:radial-gradient(ellipse at 30% 10%,#0d1b2e 0%,#060610 55%,#160d26 100%);">
+
+    <!-- Subject header -->
+    <div class="safe-top" style="padding:16px 20px 0;display:flex;align-items:center;gap:12px;">
+      <button onclick="goTo('dashboard')" style="background:rgba(255,255,255,0.1);border:none;
+        color:#fff;width:36px;height:36px;border-radius:50%;font-size:16px;cursor:pointer;flex-shrink:0;">←</button>
+      <div style="display:flex;align-items:center;gap:10px;min-width:0;">
+        <span style="font-size:30px;">${sub.icon}</span>
+        <div style="min-width:0;">
+          <div style="font-size:17px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(sub.name)}</div>
+          <div style="color:rgba(255,255,255,0.35);font-size:10px;font-family:'DM Mono',monospace;">subjects/${sub.id}/</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tab bar -->
+    <div style="display:flex;gap:4px;margin:14px 16px;background:rgba(255,255,255,0.05);border-radius:12px;padding:4px;">
+      ${tabBar}
+    </div>
+
+    <!-- Upload buttons -->
+    <div style="display:flex;gap:10px;padding:0 16px 16px;flex-wrap:wrap;">
+      ${uploadBar}
+    </div>
+
+    <!-- Content -->
+    <div style="padding:0 16px 16px;">
+      ${tabContent}
+    </div>
+  </div>
+  <style>
+  .upload-btn {
+    border:none;color:#fff;padding:11px 18px;border-radius:12px;
+    cursor:pointer;font-size:13px;font-weight:800;
+    font-family:'Syne',sans-serif;display:flex;align-items:center;gap:7px;
+  }
+  .upload-btn:active { opacity:0.8; }
+  </style>`;
+}
+
+function renderFileList(files, emptyIcon, emptyMsg) {
+  if (!files.length) return `<div style="text-align:center;padding:44px 20px;color:rgba(255,255,255,0.22);">
+    <div style="font-size:40px;margin-bottom:10px;">${emptyIcon}</div><p style="font-size:13px;line-height:1.6;">${emptyMsg}</p></div>`;
+  return files.map(f=>`
+    <div style="display:flex;justify-content:space-between;align-items:center;
+      background:rgba(255,255,255,0.05);border-radius:13px;padding:13px 14px;
+      border:1px solid rgba(255,255,255,0.08);margin-bottom:10px;animation:fadeUp 0.3s ease;">
+      <div style="flex:1;min-width:0;margin-right:10px;">
+        <div style="color:#fff;font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">📄 ${esc(f.name)}</div>
+        <div style="color:rgba(255,255,255,0.35);font-size:10px;margin-top:3px;font-family:'DM Mono',monospace;">${f.size} · GitHub</div>
+      </div>
+      <div style="display:flex;gap:7px;flex-shrink:0;">
+        <a href="${f.url}" target="_blank" style="background:rgba(79,142,247,0.2);color:#4f8ef7;
+          border-radius:9px;padding:7px 12px;font-size:11px;font-weight:700;text-decoration:none;">⬇</a>
+        <button onclick="deleteFile('${esc(f.path)}','${esc(f.sha)}','${esc(f.name)}')"
+          style="background:rgba(255,80,80,0.2);color:#ff6b6b;border:none;
+          border-radius:9px;padding:7px 10px;font-size:13px;cursor:pointer;">🗑</button>
+      </div>
+    </div>`).join("");
+}
+
+function renderPhotoGrid(photos) {
+  if (!photos.length) return `<div style="text-align:center;padding:44px 20px;color:rgba(255,255,255,0.22);">
+    <div style="font-size:40px;margin-bottom:10px;">📸</div>
+    <p style="font-size:13px;line-height:1.6;">No photos yet — pick from gallery or take with camera</p></div>`;
+  return `<div class="photo-grid">${photos.map(p=>`
+    <div class="photo-item" onclick="openLightbox('${esc(p.url)}','${esc(p.name)}')">
+      <img src="${esc(p.url)}" alt="${esc(p.name)}" loading="lazy" />
+      <button onclick="event.stopPropagation();deleteFile('${esc(p.path)}','${esc(p.sha)}','${esc(p.name)}')"
+        style="position:absolute;top:5px;right:5px;background:rgba(0,0,0,0.75);border:none;
+        color:#fff;width:24px;height:24px;border-radius:50%;font-size:11px;cursor:pointer;
+        display:flex;align-items:center;justify-content:center;">✕</button>
+    </div>`).join("")}</div>`;
+}
+
+function renderTextNotes(notes) {
+  const addBtn = `<button onclick="showAddNote()" style="background:linear-gradient(135deg,#667eea,#764ba2);
+    border:none;color:#fff;padding:10px 20px;border-radius:12px;cursor:pointer;
+    font-size:14px;font-weight:800;font-family:'Syne',sans-serif;margin-bottom:16px;">✏️ New Note</button>`;
+  const empty = !notes.length ? `<div style="text-align:center;padding:44px 20px;color:rgba(255,255,255,0.22);">
+    <div style="font-size:40px;margin-bottom:10px;">✏️</div>
+    <p style="font-size:13px;">No text notes yet — write your first one!</p></div>` : "";
+  const list = notes.map(n=>`
+    <div style="background:rgba(102,126,234,0.08);border:1px solid rgba(102,126,234,0.2);
+      border-radius:14px;padding:14px 16px;margin-bottom:10px;animation:fadeUp 0.3s ease;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+        <span style="font-weight:800;font-size:14px;">📝 ${esc(n.name.replace(/\.txt$/,""))}</span>
+        <div style="display:flex;gap:7px;">
+          <a href="${n.url}" target="_blank" style="background:rgba(79,142,247,0.2);color:#4f8ef7;
+            border-radius:8px;padding:5px 11px;font-size:11px;font-weight:700;text-decoration:none;">View</a>
+          <button onclick="deleteFile('${esc(n.path)}','${esc(n.sha)}','${esc(n.name)}')"
+            style="background:rgba(255,80,80,0.2);color:#ff6b6b;border:none;
+            border-radius:8px;padding:5px 9px;font-size:12px;cursor:pointer;">🗑</button>
+        </div>
+      </div>
+      <div style="color:rgba(255,255,255,0.35);font-size:10px;font-family:'DM Mono',monospace;">${n.size} · GitHub</div>
+    </div>`).join("");
+  return addBtn + empty + list;
+}
+
+/* ══════════════════════════════════════════════════
+   ALL MID PAPERS
+══════════════════════════════════════════════════ */
+function renderAllMid() {
+  const all = STATE.subjects.flatMap(s =>
+    (STATE.subData[s.id]?.mid||[]).map(f=>({...f,subject:s.name,icon:s.icon,color:s.color}))
+  );
+
+  let content;
+  if (STATE.loading) {
+    content = `<div style="text-align:center;padding:50px 0;color:rgba(255,255,255,0.35);">
+      <div class="spin" style="width:32px;height:32px;margin:0 auto 14px;"></div>
+      <div>Loading from GitHub…</div></div>`;
+  } else if (!all.length) {
+    content = `<div style="text-align:center;padding:50px 20px;color:rgba(255,255,255,0.25);">
+      <div style="font-size:44px;margin-bottom:12px;">📭</div>
+      <p style="font-size:14px;line-height:1.6;">No mid papers yet.<br/>Open a subject and upload some!</p></div>`;
+  } else {
+    content = all.map(f=>`
+      <div style="background:rgba(255,200,80,0.07);border:1px solid rgba(255,200,80,0.15);
+        border-radius:14px;padding:14px 16px;margin-bottom:10px;animation:fadeUp 0.3s ease;">
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;">
+          <span>${f.icon}</span>
+          <span style="color:${f.color};font-size:11px;font-weight:700;">${esc(f.subject)}</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <div style="flex:1;min-width:0;margin-right:10px;">
+            <div style="color:#fff;font-size:14px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">📄 ${esc(f.name)}</div>
+            <div style="color:rgba(255,255,255,0.35);font-size:10px;margin-top:3px;font-family:'DM Mono',monospace;">${f.size} · GitHub</div>
+          </div>
+          <a href="${f.url}" target="_blank" style="background:rgba(255,200,80,0.2);color:#ffc850;
+            border-radius:10px;padding:8px 14px;font-size:12px;font-weight:700;text-decoration:none;flex-shrink:0;">⬇ View</a>
+        </div>
+      </div>`).join("");
+  }
+
+  return `
+  <div class="fade" style="min-height:100vh;padding:20px;
+    background:radial-gradient(ellipse at 30% 10%,#0d1b2e 0%,#060610 55%,#160d26 100%);">
+    <div class="safe-top" style="margin-bottom:6px;">
+      <h1 style="font-size:22px;font-weight:800;">📝 All Mid Papers</h1>
+      <p style="color:rgba(255,255,255,0.38);font-size:12px;margin-top:4px;">Every exam paper — from GitHub</p>
+    </div>
+    <div style="margin-top:20px;">${content}</div>
+  </div>`;
+}
+
+/* ══════════════════════════════════════════════════
+   MODALS  (bottom sheets)
+══════════════════════════════════════════════════ */
+function showAddSubject() {
+  const overlay = document.createElement("div");
+  overlay.className = "modal-overlay";
+  overlay.id = "modal-overlay";
+  overlay.onclick = e => { if(e.target===overlay) closeModal(); };
+  overlay.innerHTML = `
+    <div class="modal-sheet">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;">
+        <h3 style="font-size:17px;font-weight:800;">➕ New Subject</h3>
+        <button onclick="closeModal()" style="background:rgba(255,255,255,0.1);border:none;color:#fff;
+          width:32px;height:32px;border-radius:50%;font-size:16px;cursor:pointer;">✕</button>
+      </div>
+      <label style="color:rgba(255,255,255,0.4);font-size:10px;letter-spacing:2.5px;display:block;margin-bottom:7px;font-weight:700;">SUBJECT NAME</label>
+      <input class="inp" id="modal-sub-name" placeholder="e.g. Biology, Urdu, Economics…"
+        onkeydown="if(event.key==='Enter')submitAddSubject()" style="margin-bottom:18px;" />
+      <button class="btn-primary" onclick="submitAddSubject()">Add Subject</button>
+    </div>`;
+  document.body.appendChild(overlay);
+  setTimeout(() => document.getElementById("modal-sub-name")?.focus(), 100);
+}
+
+async function submitAddSubject() {
+  const name = (document.getElementById("modal-sub-name")?.value || "").trim();
+  if (!name) return;
+  const icons  = ["📚","🔬","🎨","🌍","🎵","🏛️","⚡","🧠","🌱","🎭","🧮","🔭"];
+  const colors = ["#f76f9f","#4fcfdc","#f7a84f","#7af74f","#dc4ff7","#4f8ef7","#ff9f43","#54a0ff"];
+  const ns = { id:slugify(name)+"-"+Date.now(), name, icon:icons[Math.floor(Math.random()*icons.length)], color:colors[Math.floor(Math.random()*colors.length)] };
+  STATE.subjects.push(ns);
+  closeModal();
+  render();
+  try {
+    const ex = await ghGetFile("subjects/_list.json");
+    await ghPutFile("subjects/_list.json", JSON.stringify(STATE.subjects,null,2), ex?.sha, "Update subjects");
+    showToast("📚 Subject saved to GitHub!");
+  } catch { showToast("Subject added (GitHub save failed)", "warn"); }
+}
+
+function showAddNote() {
+  const overlay = document.createElement("div");
+  overlay.className = "modal-overlay";
+  overlay.id = "modal-overlay";
+  overlay.onclick = e => { if(e.target===overlay) closeModal(); };
+  overlay.innerHTML = `
+    <div class="modal-sheet">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+        <h3 style="font-size:17px;font-weight:800;">✏️ New Text Note</h3>
+        <button onclick="closeModal()" style="background:rgba(255,255,255,0.1);border:none;color:#fff;
+          width:32px;height:32px;border-radius:50%;font-size:16px;cursor:pointer;">✕</button>
+      </div>
+      <input class="inp" id="note-title" placeholder="Note title…" style="margin-bottom:12px;" />
+      <textarea class="inp" id="note-body" placeholder="Write your notes here…" rows="6"></textarea>
+      <button class="btn-primary" id="save-note-btn" onclick="submitSaveNote()" style="margin-top:14px;">
+        💾 Save to GitHub
+      </button>
+    </div>`;
+  document.body.appendChild(overlay);
+  setTimeout(() => document.getElementById("note-title")?.focus(), 100);
+}
+
+async function submitSaveNote() {
+  const title   = (document.getElementById("note-title")?.value || "").trim() || "Untitled";
+  const content = document.getElementById("note-body")?.value || "";
+  const btn = document.getElementById("save-note-btn");
+  if (btn) { btn.innerHTML='<span class="spin" style="width:16px;height:16px;"></span> Saving…'; btn.disabled=true; }
+  try {
+    const fname = `${slugify(title)}-${Date.now()}.txt`;
+    const path  = `subjects/${STATE.activeSub.id}/texts/${fname}`;
+    const ex    = await ghGetFile(path);
+    await ghPutFile(path, content, ex?.sha, `Add note: ${fname}`);
+    showToast("✅ Note saved to GitHub!");
+    closeModal();
+    await loadSubData(STATE.activeSub);
+    render();
+  } catch(e) {
+    showToast("Save failed: "+e.message, "error");
+    if (btn) { btn.innerHTML='💾 Save to GitHub'; btn.disabled=false; }
+  }
+}
+
+function closeModal() {
+  document.getElementById("modal-overlay")?.remove();
+}
+
+/* ══════════════════════════════════════════════════
+   LIGHTBOX
+══════════════════════════════════════════════════ */
+function openLightbox(url, name) {
+  const lb = document.getElementById("lightbox");
+  document.getElementById("lightbox-img").src = url;
+  document.getElementById("lightbox-dl").href = url;
+  document.getElementById("lightbox-dl").download = name;
+  lb.classList.add("open");
+}
+function closeLightbox() {
+  document.getElementById("lightbox").classList.remove("open");
+  document.getElementById("lightbox-img").src = "";
+}
+
+/* ══════════════════════════════════════════════════
+   DATA LOADING
+══════════════════════════════════════════════════ */
+async function loadSubjects() {
+  try {
+    const f = await ghGetFile("subjects/_list.json");
+    if (f) {
+      STATE.subjects = JSON.parse(decodeURIComponent(escape(atob(f.content.replace(/\n/g,"")))));
+    }
+  } catch {}
+}
+
+async function loadSubData(sub) {
+  STATE.loading = true; render();
+  const base = `subjects/${sub.id}`;
+  try {
+    const [notesR, midR, photosR, textsR] = await Promise.all([
+      ghListDir(`${base}/notes`),
+      ghListDir(`${base}/mid-papers`),
+      ghListDir(`${base}/photos`),
+      ghListDir(`${base}/texts`),
+    ]);
+    const map = f => ({ name:f.name, path:f.path, sha:f.sha, size:fmtSize(f.size||0), url:f.download_url });
+    STATE.subData[sub.id] = {
+      notes:  Array.isArray(notesR)  ? notesR .filter(f=>f.type==="file").map(map) : [],
+      mid:    Array.isArray(midR)    ? midR   .filter(f=>f.type==="file").map(map) : [],
+      photos: Array.isArray(photosR) ? photosR.filter(f=>f.type==="file"&&isImg(f.name)).map(map) : [],
+      texts:  Array.isArray(textsR)  ? textsR .filter(f=>f.type==="file"&&f.name.endsWith(".txt")).map(map) : [],
+    };
+  } catch(e) { showToast("Load failed: "+e.message, "error"); }
+  finally { STATE.loading = false; render(); }
+}
+
+/* ══════════════════════════════════════════════════
+   ACTIONS
+══════════════════════════════════════════════════ */
+async function openSubject(idx) {
+  STATE.activeSub = STATE.subjects[idx];
+  STATE.tab = "notes";
+  STATE.view = "subject";
+  render();
+  await loadSubData(STATE.activeSub);
+}
+
+function switchTab(t) { STATE.tab=t; render(); }
+
+function goTo(v) { STATE.view=v; render(); }
+
+async function openAllMid() {
+  STATE.view = "allMid"; STATE.loading = true; render();
+  for (const s of STATE.subjects) {
+    if (!STATE.subData[s.id]) await loadSubData(s);
+  }
+  STATE.loading = false; render();
+}
+
+async function handleUpload(files, folder) {
+  if (!files.length || !STATE.activeSub) return;
+  STATE.uploading = true;
+  showToast("⬆ Uploading to GitHub…", "warn");
+  try {
+    for (const f of files) {
+      await ghUploadBinary(`subjects/${STATE.activeSub.id}/${folder}/${f.name}`, f);
+    }
+    showToast(`✅ ${files.length} file(s) saved!`);
+    await loadSubData(STATE.activeSub);
+  } catch(e) { showToast("Upload failed: "+e.message, "error"); STATE.uploading=false; render(); }
+  STATE.uploading = false;
+}
+
+async function deleteFile(path, sha, name) {
+  if (!confirm(`Delete "${name}" from GitHub?`)) return;
+  try {
+    await ghDeleteFile(path, sha, `Delete ${name}`);
+    showToast("🗑 Deleted");
+    if (STATE.activeSub) await loadSubData(STATE.activeSub);
+  } catch(e) { showToast("Delete failed: "+e.message, "error"); }
+}
+
+function doLogout() {
+  if (!confirm("Log out?")) return;
+  clearAuthLocal();
+  STATE.auth = null; STATE.view="login"; loginStep=1;
+  render();
+}
+
+/* ══════════════════════════════════════════════════
+   FILE INPUT EVENTS
+══════════════════════════════════════════════════ */
+function attachEvents() {
+  // file inputs — re-attach each render
+  document.getElementById("input-pdf")    ?.addEventListener("change", e=>{ handleUpload(Array.from(e.target.files),"notes");      e.target.value=""; });
+  document.getElementById("input-mid")    ?.addEventListener("change", e=>{ handleUpload(Array.from(e.target.files),"mid-papers"); e.target.value=""; });
+  document.getElementById("input-gallery")?.addEventListener("change", e=>{ handleUpload(Array.from(e.target.files),"photos");     e.target.value=""; });
+  document.getElementById("input-camera") ?.addEventListener("change", e=>{ handleUpload(Array.from(e.target.files),"photos");     e.target.value=""; });
+}
+
+/* ══════════════════════════════════════════════════
+   PWA INSTALL
+══════════════════════════════════════════════════ */
+let deferredInstall = null;
+
+window.addEventListener("beforeinstallprompt", e => {
+  e.preventDefault();
+  deferredInstall = e;
+  const banner = document.getElementById("install-banner");
+  if (banner && STATE.view !== "login") banner.style.display = "block";
+});
+
+async function installApp() {
+  if (deferredInstall) {
+    deferredInstall.prompt();
+    const result = await deferredInstall.userChoice;
+    deferredInstall = null;
+    document.getElementById("install-banner").style.display = "none";
+  }
+}
+
+// iOS hint
+const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+const isInStandalone = window.navigator.standalone;
+if (isIOS && !isInStandalone) {
+  setTimeout(() => {
+    const banner = document.getElementById("install-banner");
+    const hint   = document.getElementById("ios-hint");
+    if (banner && STATE.view !== "login") {
+      banner.style.display = "block";
+      if (hint) hint.style.display = "block";
+    }
+  }, 3000);
+}
+
+/* ══════════════════════════════════════════════════
+   BOOT
+══════════════════════════════════════════════════ */
+async function boot() {
+  if (loadAuthLocal()) {
+    // already logged in — skip to dashboard
+    try {
+      await loadSubjects();
+      STATE.view = "dashboard";
+    } catch {
+      clearAuthLocal(); STATE.auth=null; STATE.view="login";
+    }
+  }
+  render();
+}
+
+boot();
+</script>
+
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js').catch(()=>{});
+  });
+}
+</script>
+
+</body>
+</html>
