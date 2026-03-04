@@ -1,0 +1,18 @@
+{
+  "name": "StudyVault",
+  "short_name": "StudyVault",
+  "description": "Your personal study app",
+  "start_url": "/studyvault-app/",
+  "display": "standalone",
+  "background_color": "#06060f",
+  "theme_color": "#06060f",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "icon.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

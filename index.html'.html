@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>StudyVault — GitHub Connect</title>
+  <link rel="manifest" href="manifest.json" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="StudyVault" />
+  <meta name="theme-color" content="#06060f" />
+  <link rel="apple-touch-icon" href="icon.png" />
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@500;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Syne', sans-serif;
+      min-height: 100vh;
+      display: flex; align-items: center; justify-content: center;
+      background: radial-gradient(ellipse at 25% 40%, #0d1b2e 0%, #06060f 55%, #180e2a 100%);
+      padding: 20px;
+      color: #fff;
+    }
+    input, button { font-family: 'Syne', sans-serif; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    @keyframes rise { from { opacity:0; transform:translateY(14px); } to { opacity:1; transform:none; } }
+    @keyframes pop  { from { opacity:0; transform:scale(0.94); } to { opacity:1; transform:scale(1); } }
+
+    .blob1 { position:fixed; top:-20%; left:-8%; width:500px; height:500px; border-radius:50%; background:radial-gradient(#4f8ef712, transparent 70%); pointer-events:none; }
+    .blob2 { position:fixed; bottom:-12%; right:-5%; width:420px; height:420px; border-radius:50%; background:radial-gradient(#c47af712, transparent 70%); pointer-events:none; }
+
+    .card {
+      width: 100%; max-width: 430px;
+      background: rgba(255,255,255,0.04);
+      backdrop-filter: blur(24px);
+      border: 1px solid rgba(255,255,255,0.11);
+      border-radius: 26px; padding: 42px 32px;
+      box-shadow: 0 28px 80px rgba(0,0,0,0.6);
+      animation: pop 0.35s ease;
+      position: relative; z-index: 1;
+    }
+
+    .inp {
+      width: 100%; padding: 14px 16px;
+      background: rgba(255,255,255,0.07);
+      border: 1px solid rgba(255,255,255,0.13);
+      border-radius: 13px; color: #fff; font-size: 15px; outline: none;
+      transition: border-color 0.2s;
+    }
+    .inp:focus { border-color: rgba(102,126,234,0.6); }
+    .inp::placeholder { color: rgba(255,255,255,0.28); }
+
+    .btn-main {
+      width: 100%; padding: 14px;
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      border: none; border-radius: 13px; color: #fff;
+      font-size: 15px; font-weight: 800; cursor: pointer;
+      display: flex; align-items: center; justify-content: center; gap: 10px;
+      transition: opacity 0.2s;
+    }
+    .btn-main:hover { opacity: 0.88; }
+    .btn-main:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    .btn-gh {
+      width: 100%; padding: 14px;
+      background: linear-gradient(135deg, #24292e, #4f8ef7);
+      border: none; border-radius: 13px; color: #fff;
+      font-size: 15px; font-weight: 800; cursor: pointer;
+      display: flex; align-items: center; justify-content: center; gap: 10px;
+      transition: opacity 0.2s;
+    }
+    .btn-gh:hover { opacity: 0.88; }
+    .btn-gh:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    .label {
+      color: rgba(255,255,255,0.45); font-size: 10px;
+      letter-spacing: 2.5px; display: block;
+      margin-bottom: 8px; font-weight: 700;
+    }
+    .err {
+      background: rgba(220,50,50,0.13);
+      border: 1px solid rgba(220,50,50,0.3);
+      border-radius: 12px; padding: 11px 15px;
+      color: #ff8888; font-size: 13px;
+      margin-bottom: 20px; line-height: 1.5;
+      display: none;
+    }
+    .spinner {
+      display: inline-block; width: 18px; height: 18px;
+      border: 2.5px solid rgba(255,255,255,0.25);
+      border-top-color: #fff; border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+    }
+    .step { display: none; animation: rise 0.3s ease; }
+    .step.active { display: block; }
+
+    /* success */
+    .success-screen {
+      display: none; flex-direction: column;
+      align-items: center; text-align: center; gap: 20px;
+      animation: pop 0.35s ease;
+    }
+    .success-screen.active { display: flex; }
+  </style>
+</head>
+<body>
+<div class="blob1"></div>
+<div class="blob2"></div>
+
+<div class="card">
+
+  <!-- Logo -->
+  <div style="text-align:center; margin-bottom:28px;">
+    <div style="font-size:52px;">🎓</div>
+    <h1 style="font-size:26px; font-weight:800; letter-spacing:-0.8px; margin-top:8px;">StudyVault</h1>
+    <p id="step-label" style="color:rgba(255,255,255,0.35); font-size:11px; margin-top:5px; font-family:'DM Mono',monospace; letter-spacing:1.8px;">
+      STEP 1 OF 2 — APP ACCESS
+    </p>
+  </div>
+
+  <!-- Progress bar -->
+  <div style="display:flex; gap:8px; margin-bottom:30px;">
+    <div id="bar1" style="flex:1; height:3px; border-radius:3px; background:linear-gradient(90deg,#667eea,#764ba2);"></div>
+    <div id="bar2" style="flex:1; height:3px; border-radius:3px; background:rgba(255,255,255,0.1); transition:background 0.4s;"></div>
+  </div>
+
+  <!-- Error -->
+  <div class="err" id="err-box"></div>
+
+  <!-- ── STEP 1: Password ── -->
+  <div class="step active" id="step1">
+    <label class="label">APP PASSWORD</label>
+    <div style="position:relative; margin-bottom:24px;">
+      <input class="inp" id="inp-pass" type="password" placeholder="Enter your vault password" style="padding-right:50px;"
+        onkeydown="if(event.key==='Enter') doStep1()"/>
+      <button onclick="toggleVis('inp-pass', this)"
+        style="position:absolute;right:14px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:20px;color:rgba(255,255,255,0.4);">👁️</button>
+    </div>
+    <button class="btn-main" onclick="doStep1()">Unlock →</button>
+    <p style="color:rgba(255,255,255,0.22); font-size:12px; text-align:center; margin-top:18px;">
+      Default password: <code style="font-family:'DM Mono',monospace; background:rgba(255,255,255,0.08); padding:1px 7px; border-radius:4px;">study123</code>
+    </p>
+  </div>
+
+  <!-- ── STEP 2: GitHub ── -->
+  <div class="step" id="step2">
+
+    <!-- How-to guide -->
+    <div style="background:rgba(255,200,80,0.08); border:1px solid rgba(255,200,80,0.22); border-radius:14px; padding:16px; margin-bottom:24px;">
+      <div style="color:#ffc850; font-weight:800; font-size:13px; margin-bottom:10px;">🔑 How to get your GitHub Token</div>
+      <div style="display:flex; flex-direction:column; gap:8px;">
+        <div style="display:flex;gap:10px;align-items:flex-start;"><span style="background:rgba(255,200,80,0.25);color:#ffc850;border-radius:50%;width:20px;height:20px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;flex-shrink:0;">1</span><span style="color:rgba(255,255,255,0.7);font-size:12px;line-height:1.5;">Open <strong>github.com</strong> and sign in</span></div>
+        <div style="display:flex;gap:10px;align-items:flex-start;"><span style="background:rgba(255,200,80,0.25);color:#ffc850;border-radius:50%;width:20px;height:20px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;flex-shrink:0;">2</span><span style="color:rgba(255,255,255,0.7);font-size:12px;line-height:1.5;">Click your <strong>profile photo</strong> (top right) → <strong>Settings</strong></span></div>
+        <div style="display:flex;gap:10px;align-items:flex-start;"><span style="background:rgba(255,200,80,0.25);color:#ffc850;border-radius:50%;width:20px;height:20px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;flex-shrink:0;">3</span><span style="color:rgba(255,255,255,0.7);font-size:12px;line-height:1.5;">Scroll to bottom → <strong>Developer settings</strong></span></div>
+        <div style="display:flex;gap:10px;align-items:flex-start;"><span style="background:rgba(255,200,80,0.25);color:#ffc850;border-radius:50%;width:20px;height:20px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;flex-shrink:0;">4</span><span style="color:rgba(255,255,255,0.7);font-size:12px;line-height:1.5;"><strong>Personal access tokens</strong> → <strong>Tokens (classic)</strong></span></div>
+        <div style="display:flex;gap:10px;align-items:flex-start;"><span style="background:rgba(255,200,80,0.25);color:#ffc850;border-radius:50%;width:20px;height:20px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;flex-shrink:0;">5</span><span style="color:rgba(255,255,255,0.7);font-size:12px;line-height:1.5;"><strong>Generate new token (classic)</strong> → tick ✅ <strong>repo</strong> → Generate</span></div>
+        <div style="display:flex;gap:10px;align-items:flex-start;"><span style="background:rgba(255,200,80,0.25);color:#ffc850;border-radius:50%;width:20px;height:20px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;flex-shrink:0;">6</span><span style="color:rgba(255,255,255,0.7);font-size:12px;line-height:1.5;">Copy the <strong>ghp_xxx…</strong> token and paste below</span></div>
+      </div>
+    </div>
+
+    <label class="label">GITHUB TOKEN</label>
+    <div style="position:relative; margin-bottom:18px;">
+      <input class="inp" id="inp-token" type="password" placeholder="ghp_xxxxxxxxxxxxxxxxxxxx"
+        style="padding-right:50px; font-family:'DM Mono',monospace; font-size:13px;"
+        onkeydown="if(event.key==='Enter') doConnect()"/>
+      <button onclick="toggleVis('inp-token', this)"
+        style="position:absolute;right:14px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:20px;color:rgba(255,255,255,0.4);">👁️</button>
+    </div>
+
+    <label class="label">REPOSITORY NAME</label>
+    <input class="inp" id="inp-repo" value="study-vault" placeholder="study-vault"
+      style="margin-bottom:6px; font-family:'DM Mono',monospace;"
+      onkeydown="if(event.key==='Enter') doConnect()"/>
+    <p style="color:rgba(255,255,255,0.28); font-size:11px; margin-bottom:22px; padding-left:2px;">
+      Will be created automatically as a private repo if it doesn't exist.
+    </p>
+
+    <button class="btn-gh" id="connect-btn" onclick="doConnect()">🐙 Connect GitHub</button>
+
+    <button onclick="goBack()"
+      style="background:none;border:none;color:rgba(255,255,255,0.3);font-size:13px;cursor:pointer;width:100%;margin-top:16px;text-align:center;">
+      ← Back
+    </button>
+  </div>
+
+  <!-- ── SUCCESS ── -->
+  <div class="success-screen" id="success">
+    <div style="position:relative;">
+      <img id="avatar-img" src="" alt="avatar"
+        style="width:88px;height:88px;border-radius:50%;border:3px solid #4fdc8a;display:block;"/>
+      <div style="position:absolute;bottom:0;right:0;background:#4fdc8a;border-radius:50%;width:28px;height:28px;display:flex;align-items:center;justify-content:center;font-size:15px;border:3px solid #06060f;">✓</div>
+    </div>
+
+    <div>
+      <div style="color:#4fdc8a;font-size:12px;font-weight:700;letter-spacing:1.8px;margin-bottom:6px;">CONNECTED SUCCESSFULLY</div>
+      <h2 id="gh-username" style="font-size:24px;font-weight:800;letter-spacing:-0.5px;"></h2>
+    </div>
+
+    <div style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.12);border-radius:16px;padding:18px 22px;display:flex;align-items:center;gap:14px;width:100%;">
+      <span style="font-size:28px;">🐙</span>
+      <div style="text-align:left;">
+        <div style="color:rgba(255,255,255,0.45);font-size:10px;font-weight:700;letter-spacing:1.8px;">GITHUB REPO</div>
+        <div id="repo-name" style="color:#fff;font-size:15px;font-weight:800;margin-top:3px;"></div>
+        <div style="color:rgba(255,255,255,0.32);font-size:11px;font-family:'DM Mono',monospace;margin-top:3px;">🔒 Private repository</div>
+      </div>
+    </div>
+
+    <a id="gh-link" href="#" target="_blank"
+      style="background:rgba(79,142,247,0.15);color:#4f8ef7;border:1px solid rgba(79,142,247,0.3);border-radius:12px;padding:10px 22px;font-size:14px;font-weight:700;text-decoration:none;display:inline-flex;align-items:center;gap:8px;">
+      🐙 Open on GitHub ↗
+    </a>
+
+    <div style="background:rgba(79,220,138,0.08);border:1px solid rgba(79,220,138,0.2);border-radius:12px;padding:14px 18px;width:100%;">
+      <p style="color:rgba(255,255,255,0.6);font-size:13px;line-height:1.7;text-align:center;">
+        ✅ GitHub connected and ready!<br/>
+        Tell me and we'll build <strong>Step 2 — the subject dashboard</strong> 🎓
+      </p>
+    </div>
+  </div>
+
+</div><!-- end card -->
+
+<script>
+  const APP_PASSWORD = "study123";
+
+  function showErr(msg) {
+    const el = document.getElementById("err-box");
+    el.textContent = msg; el.style.display = "block";
+  }
+  function hideErr() {
+    document.getElementById("err-box").style.display = "none";
+  }
+  function toggleVis(id, btn) {
+    const inp = document.getElementById(id);
+    if (inp.type === "password") { inp.type = "text";     btn.textContent = "🙈"; }
+    else                         { inp.type = "password"; btn.textContent = "👁️"; }
+  }
+  function goBack() {
+    hideErr();
+    document.getElementById("step2").classList.remove("active");
+    document.getElementById("step1").classList.add("active");
+    document.getElementById("step-label").textContent = "STEP 1 OF 2 — APP ACCESS";
+    document.getElementById("bar2").style.background = "rgba(255,255,255,0.1)";
+  }
+
+  function doStep1() {
+    hideErr();
+    const pass = document.getElementById("inp-pass").value;
+    if (pass === APP_PASSWORD) {
+      document.getElementById("step1").classList.remove("active");
+      document.getElementById("step2").classList.add("active");
+      document.getElementById("step-label").textContent = "STEP 2 OF 2 — GITHUB SETUP";
+      document.getElementById("bar2").style.background = "linear-gradient(90deg,#667eea,#764ba2)";
+    } else {
+      showErr("❌ Wrong password. Default is: study123");
+    }
+  }
+
+  async function doConnect() {
+    hideErr();
+    const token = document.getElementById("inp-token").value.trim();
+    const repo  = document.getElementById("inp-repo").value.trim() || "study-vault";
+
+    if (!token) { showErr("Please paste your GitHub token first."); return; }
+
+    const btn = document.getElementById("connect-btn");
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span> Connecting…';
+
+    try {
+      // 1. Verify token + get user
+      const userRes = await fetch("https://api.github.com/user", {
+        headers: { Authorization: `token ${token}`, Accept: "application/vnd.github+json" }
+      });
+      if (!userRes.ok) throw new Error("Token is invalid or missing 'repo' scope. Please check and try again.");
+      const user = await userRes.json();
+
+      // 2. Check if repo exists
+      const repoRes = await fetch(`https://api.github.com/repos/${user.login}/${repo}`, {
+        headers: { Authorization: `token ${token}`, Accept: "application/vnd.github+json" }
+      });
+
+      if (!repoRes.ok) {
+        // Create it
+        const createRes = await fetch("https://api.github.com/user/repos", {
+          method: "POST",
+          headers: { Authorization: `token ${token}`, Accept: "application/vnd.github+json", "Content-Type": "application/json" },
+          body: JSON.stringify({ name: repo, private: true, auto_init: true, description: "StudyVault — my personal study storage" })
+        });
+        if (!createRes.ok) {
+          const e = await createRes.json();
+          throw new Error(e.message || "Could not create repository.");
+        }
+        await new Promise(r => setTimeout(r, 2000));
+      }
+
+      // 3. Save to localStorage so next step can use it
+      localStorage.setItem("sv_token",   token);
+      localStorage.setItem("sv_owner",   user.login);
+      localStorage.setItem("sv_repo",    repo);
+      localStorage.setItem("sv_username",user.login);
+
+      // 4. Show success
+      document.getElementById("step2").classList.remove("active");
+      document.getElementById("step-label").style.display = "none";
+      document.getElementById("bar1").style.display = "none";
+      document.getElementById("bar2").style.display = "none";
+      document.getElementById("err-box").style.display = "none";
+
+      document.getElementById("avatar-img").src = user.avatar_url;
+      document.getElementById("gh-username").textContent = "@" + user.login;
+      document.getElementById("repo-name").textContent = user.login + "/" + repo;
+      document.getElementById("gh-link").href = `https://github.com/${user.login}/${repo}`;
+      document.getElementById("success").classList.add("active");
+
+    } catch(e) {
+      showErr("❌ " + e.message);
+      btn.disabled = false;
+      btn.innerHTML = "🐙 Connect GitHub";
+    }
+  }
+</script>
+
+<script>
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", function() {
+    navigator.serviceWorker.register("sw.js")
+      .then(function(reg) { console.log("SW registered"); })
+      .catch(function(err) { console.log("SW failed", err); });
+  });
+}
+</script>
+</body>
+</html>
